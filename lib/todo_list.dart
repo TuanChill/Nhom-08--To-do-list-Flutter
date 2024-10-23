@@ -1,56 +1,63 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 
 class TodoListPage extends StatefulWidget {
   @override
   _TodoListPageState createState() => _TodoListPageState();
 }
 
-class _TodoListPageState extends State<TodoListPage> {
-  List<String> todoList = [];
+class Task {
+  final int id;
+  final String name;
+  final String description;
+  DateTime? dateOfTask;
+  String? startTime;
+  String? endTime;
 
-  final TextEditingController _controller = TextEditingController();
+  Task(
+      {required this.id,
+      this.dateOfTask,
+      this.startTime,
+      this.endTime,
+      required this.name,
+      required this.description});
 
-  void _addTodo() {
-    if (_controller.text.isNotEmpty) {
-      setState(() {
-        todoList.add(_controller.text);
-        _controller.clear();
-      });
-    }
-  }
-
-  void _editTodo(int index) {
-    showDialog(
-      context: context,
-      builder: (context) {
-        TextEditingController editController = TextEditingController();
-        editController.text = todoList[index];
-        return AlertDialog(
-          title: Text('Edit Todo'),
-          content: TextField(
-            controller: editController,
-            decoration: InputDecoration(hintText: 'Edit your todo'),
-          ),
-          actions: [
-            ElevatedButton(
-              onPressed: () {
-                setState(() {
-                  todoList[index] = editController.text;
-                });
-                Navigator.of(context).pop();
-              },
-              child: Text('Save'),
-            ),
-          ],
-        );
-      },
+  factory Task.fromJson(Map<String, dynamic> json) {
+    return Task(
+      id: json['id'],
+      name: json['name'],
+      description: json['description'],
+      dateOfTask: DateTime.parse(json['dateOfTask']),
+      startTime: json['startTime'],
+      endTime: json['endTime'],
     );
   }
+}
 
-  void _deleteTodo(int index) {
-    setState(() {
-      todoList.removeAt(index);
-    });
+class _TodoListPageState extends State<TodoListPage> {
+  List<Task> todoList = [];
+  @override
+  void initState() {
+    super.initState();
+    _fetchTodos();
+  }
+
+  Future<void> _fetchTodos() async {
+    final response = await http.get(
+        Uri.parse('https://healing-beef-dd171c4892.strapiapp.com/api/tasks'));
+
+    if (response.statusCode == 200) {
+      final jsonResponse = jsonDecode(response.body);
+
+      setState(() {
+        todoList = (jsonResponse['data'] as List)
+            .map((todo) => Task.fromJson(todo))
+            .toList();
+      });
+    } else {
+      throw Exception('Failed to load todos');
+    }
   }
 
   @override
@@ -61,37 +68,43 @@ class _TodoListPageState extends State<TodoListPage> {
       ),
       body: Column(
         children: [
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: TextField(
-              controller: _controller,
-              decoration: InputDecoration(
-                labelText: 'Add new todo',
-                border: OutlineInputBorder(),
-              ),
-            ),
-          ),
           ElevatedButton.icon(
-            onPressed: _addTodo,
-            icon: Icon(Icons.add),  // Thêm icon dấu cộng
-            label: Text('Add Todo'),  // Văn bản "Add Todo"
+            onPressed: () {
+              Navigator.pushNamed(
+                  context, '/add-todo'); // Navigate to CreateTaskScreen
+            },
+            icon: Icon(Icons.add),
+            label: Text('Add Todo'),
           ),
           Expanded(
             child: ListView.builder(
               itemCount: todoList.length,
               itemBuilder: (context, index) {
                 return ListTile(
-                  title: Text(todoList[index]),
+                  title: Text(todoList[index].name),
+                  subtitle: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(todoList[index].description),
+                      Text(
+                          'Date: ${todoList[index].dateOfTask?.toLocal().toString().split(' ')[0]}'),
+                      Text('Start Time: ${todoList[index].startTime}'),
+                      Text('End Time: ${todoList[index].endTime}'),
+                    ],
+                  ),
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       IconButton(
                         icon: Icon(Icons.edit),
-                        onPressed: () => _editTodo(index),
+                        onPressed: () => {
+                          Navigator.pushNamed(context, '/edit-todo',
+                              arguments: todoList[index])
+                        },
                       ),
                       IconButton(
                         icon: Icon(Icons.delete),
-                        onPressed: () => _deleteTodo(index),
+                        onPressed: () => {},
                       ),
                     ],
                   ),

@@ -6,12 +6,18 @@ import 'create.dart';
 void main() {
   runApp(MyApp());
 }
+
 class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      home: TodoListPage(),
+      title: 'Todo App',
+      initialRoute: '/',
+      routes: {
+        '/': (context) => TodoListPage(),
+        '/add-todo': (context) => CreateTaskScreen(),
+        '/edit-todo': (context) => EditTaskScreen(),
+      },
     );
   }
 }
